@@ -6,6 +6,26 @@ static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID
 static void s_ReportInvalidValue(HWND hDialogWindow, LPCSTR pcszControl, LPCSTR pcszValue, LPCSTR pcszProblem);
 static LRESULT s_GetSelectedItem(HWND hDialogWindow, int nDialogItem, LPCSTR pcszControlName);
 static BOOL s_SetSelectedItem(HWND hDialogWindow, int nDialogItem, LPCSTR pcszControlName, int nItem);
+static BOOL s_PopulateComboBox(HWND hDialogWindow, int nDialogItem, LPCSTR pcszControlName, LPCSTR* ppcszItems, SIZE_T nItems);
+
+static LPCSTR s_arrParityItems[] = {
+	"None",
+	"Odd (XOR all bits)",
+	"Even (XOR bits & invert)",
+	"Mark (rarely used)",
+	"Space (rarely used)"
+};
+
+static LPCSTR s_arrStopBitsItems[] = {
+	"1 bit", "1.5 bits", "2 bits"
+};
+
+static LPCSTR s_arrFlowCtlItems[] = {
+	"None",
+	"XON/XOFF",
+	"RTS/CTS",
+	"DTR/DSR"
+};
 
 int RtdShowConfigWindow(RtdPortInfo_t* pinfPort) {
 	INT_PTR nResult;
@@ -67,6 +87,10 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 
 	// COM port paths
 
+	// Is serial port
+	if (!CheckDlgButton(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_SERIALCHECK, BST_CHECKED))
+		ShowErrorMessage(GetLastError(), "checking serial checkbox");
+
 	// Baud rate
 	if (!SetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_BAUDRATEBOX, 9600, FALSE))
 		ShowErrorMessage(GetLastError(), "setting default baud rate");
@@ -76,6 +100,7 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 		ShowErrorMessage(GetLastError(), "setting default data bit count");
 
 	// Parity bit
+	s_PopulateComboBox(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_PARITYBOX, "parity type", s_arrParityItems, ARRAYSIZE(s_arrParityItems));
 	s_SetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_PARITYBOX, "parity type", (int)RTDISPLAY_PORT_PARITY_NONE);
 
 	// Parity error value
@@ -83,16 +108,20 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 		ShowErrorMessage(GetLastError(), "setting default parity error value");
 
 	// Flow control
+	s_PopulateComboBox(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_FLOWCTLBOX, "flow control type", s_arrFlowCtlItems,
+		ARRAYSIZE(s_arrFlowCtlItems));
 	s_SetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_FLOWCTLBOX, "flow control type", (int)RTDISPLAY_PORT_FLOWCTL_NONE);
 
 	// Stop bits
+	s_PopulateComboBox(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_STOPBITSBOX, "stop bit count", s_arrStopBitsItems,
+		ARRAYSIZE(s_arrStopBitsItems));
 	s_SetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_STOPBITSBOX, "stop bit count", (int)RTDISPLAY_PORT_STOPBITS_ONE);
 
 	return (INT_PTR)TRUE;
 }
 
 static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID, WORD nNotifID, HWND hControlWindow) {
-	UINT nLength;
+	UINT nLength, nValue;
 	BOOL bTranslated;
 	char szValue[256];
 	LRESULT nSelItem;
@@ -133,12 +162,12 @@ static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID
 			}
 
 			// Data bits
-			pinfPort->m_nDataBits = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_DATABITSBOX, &bTranslated, FALSE);
-			if (!bTranslated) {
+			nValue = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_DATABITSBOX, &bTranslated, FALSE);
+			if (!bTranslated || (nValue > 8)) {
 				GetDlgItemTextA(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_DATABITSBOX, szValue, sizeof(szValue));
-				s_ReportInvalidValue(hWnd, "data bits", szValue, "Must be a number");
+				s_ReportInvalidValue(hWnd, "data bits", szValue, bTranslated ? "Must be 8 or fewer" : "Must be a number");
 				return (INT_PTR)TRUE;
-			}
+			} else pinfPort->m_nDataBits = nValue;
 
 			// Parity type
 			nSelItem = s_GetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_PARITYBOX, "parity type");
@@ -148,12 +177,13 @@ static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID
 				pinfPort->m_typeParity = (RtdPortParity_t)nSelItem;
 
 			// Parity error value
-			pinfPort->m_nParityErrorChar = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_ERRVALBOX, &bTranslated, FALSE);
-			if (!bTranslated) {
+			nValue = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_ERRVALBOX, &bTranslated, FALSE);
+			if (!bTranslated || (nValue > 0xFF)) {
 				GetDlgItemTextA(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_ERRVALBOX, szValue, sizeof(szValue));
-				s_ReportInvalidValue(hWnd, "parity error value", szValue, "Must be a number");
+				s_ReportInvalidValue(hWnd, "parity error value", szValue, bTranslated ? "Must be 255 or less" : "Must be a number");
 				return (INT_PTR)TRUE;
 			}
+			else pinfPort->m_nParityErrorChar = nValue;
 
 			// Flow control type
 			nSelItem = s_GetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_FLOWCTLBOX, "flow control type");
@@ -267,6 +297,55 @@ static BOOL s_SetSelectedItem(HWND hDialogWindow, int nDialogItem, LPCSTR pcszCo
 		} else
 			ShowErrorMessage(GetLastError(), "formatting selection setting error message");
 		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static BOOL s_PopulateComboBox(HWND hDialogWindow, int nDialogItem, LPCSTR pcszControlName, LPCSTR* ppcszItems, SIZE_T nItems) {
+	HWND hComboBoxWindow;
+	LRESULT nResult;
+	LPSTR pszContext;
+	LPCVOID arrFormatArgs[3];
+	DWORD nError;
+
+	arrFormatArgs[0] = pcszControlName;
+
+	hComboBoxWindow = GetDlgItem(hDialogWindow, nDialogItem);
+	if (!hComboBoxWindow) {
+		nError = GetLastError();
+		if (FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+			"finding %1 control to populate", 0, 0, (LPSTR)&pszContext, 0, (va_list*)arrFormatArgs))
+		{
+			ShowErrorMessage(nError, pszContext);
+			LocalFree((HLOCAL)pszContext);
+		} else
+			ShowErrorMessage(GetLastError(), "formatting control-not-found message");
+		return FALSE;
+	}
+
+	while (nItems > 0) {
+		arrFormatArgs[1] = ppcszItems[0];
+		arrFormatArgs[2] = "";
+
+		nResult = SendMessageA(hComboBoxWindow, CB_ADDSTRING, 0, (LPARAM)ppcszItems[0]);
+		switch (nResult) {
+		case CB_ERRSPACE:
+			arrFormatArgs[2] = ": Not enough space, drop-down is full";
+
+		case CB_ERR:
+			if (FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+				"Error adding item \"%2\" to %1%3", 0, 0, (LPSTR)&pszContext, 0, (va_list*)arrFormatArgs))
+			{
+				MessageBoxA(hDialogWindow, pszContext, "Error adding item", MB_ICONERROR);
+				LocalFree((HLOCAL)pszContext);
+			} else
+				ShowErrorMessage(GetLastError(), "formatting control-not-found message");
+			return FALSE;
+		}
+
+		ppcszItems++;
+		nItems--;
 	}
 
 	return TRUE;
