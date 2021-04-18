@@ -139,11 +139,15 @@ L_error_free:
 }
 
 static void s_OnDWDestroy(HWND hWnd, RtdDispWndData_t* pData) {
-	if (pData->m_hPort && (pData->m_hPort != INVALID_HANDLE_VALUE)) {
-		CloseHandle(pData->m_hPort);
-		pData->m_hPort = NULL;
+	if (pData) {
+		if (pData->m_hPort && (pData->m_hPort != INVALID_HANDLE_VALUE)) {
+			CloseHandle(pData->m_hPort);
+			pData->m_hPort = NULL;
+		}
+
+		HeapFree(s_hHeap, 0, pData);
+		pData = NULL;
 	}
 
-	HeapFree(s_hHeap, 0, pData);
 	SetWindowLongPtrA(hWnd, 0, 0);
 }
