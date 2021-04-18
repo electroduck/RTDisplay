@@ -73,6 +73,7 @@ static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wPa
 static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 	RtdPortInfo_t* pinfPort;
 	RtdDispWndData_t* pData;
+	DCB dcb;
 
 	pinfPort = (RtdPortInfo_t*)pCreateData->lpCreateParams;
 	if (pinfPort == NULL) {
@@ -90,12 +91,51 @@ static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 		OPEN_EXISTING, 0, NULL);
 	if (pData->m_hPort == INVALID_HANDLE_VALUE) {
 		ShowErrorMessage(GetLastError(), "opening serial port");
-		HeapFree(s_hHeap, 0, pData);
-		return -1;
+		goto L_error_free;
+	}
+
+	if (pinfPort->m_bIsSerialPort) {
+		ZeroMemory(&dcb, sizeof(dcb));
+		dcb.DCBlength = sizeof(dcb);
+
+		if (!GetCommState(pData->m_hPort, &dcb)) {
+			ShowErrorMessage(GetLastError(), "querying serial port state");
+			goto L_error_close;
+		}
+
+		dcb.BaudRate = pinfPort->m_nBaudRate;
+		dcb.ByteSize = pinfPort->m_nDataBits;
+		dcb.ErrorChar = pinfPort->m_nParityErrorChar;
+		dcb.fAbortOnError = 0;
+		dcb.fBinary = 1;
+		dcb.fDsrSensitivity = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_DTRDSR;
+		dcb.fDtrControl = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_DTRDSR;
+		dcb.fErrorChar = 1;
+		dcb.fInX = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_XONXOFF;
+		dcb.fNull = 0;
+		dcb.fOutX = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_XONXOFF;
+		dcb.fOutxCtsFlow = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_RTSCTS;
+		dcb.fOutxDsrFlow = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_DTRDSR;
+		dcb.fParity = pinfPort->m_typeParity != RTDISPLAY_PORT_PARITY_NONE;
+		dcb.fRtsControl = pinfPort->m_typeFlowCtl == RTDISPLAY_PORT_FLOWCTL_RTSCTS;
+		dcb.Parity = pinfPort->m_typeParity;
+		dcb.StopBits = pinfPort->m_typeStop;
+
+		if (!SetCommState(pData->m_hPort, &dcb)) {
+			ShowErrorMessage(GetLastError(), "configuring serial port");
+			goto L_error_close;
+		}
 	}
 
 	SetWindowLongPtrA(hWnd, 0, (LONG_PTR)pData);
 	return 0;
+
+L_error_close:
+	CloseHandle(pData->m_hPort);
+	pData->m_hPort = NULL;
+L_error_free:
+	HeapFree(s_hHeap, 0, pData);
+	return -1;
 }
 
 static void s_OnDWDestroy(HWND hWnd, RtdDispWndData_t* pData) {
