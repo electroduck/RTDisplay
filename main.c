@@ -10,8 +10,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pszCmdLin
 	if (!RtdRegisterDisplayWindowClass())
 		return s_ShowErrorMessage(GetLastError(), "registering display window class");
 
-	if (!RtdShowConfigWindow(&infPort))
+	switch (RtdShowConfigWindow(&infPort)) {
+	case 0: return 0;
+	case 1: break;
+	case -1:
+	default:
 		return s_ShowErrorMessage(GetLastError(), "showing configuration window");
+	}
 
 	hDispWnd = RtdCreateDisplayWindow(&infPort);
 	if (!hDispWnd)

@@ -1,2 +1,25 @@
 1000 ICON monitor.ico
 1001 ICON settings.ico
+
+1100 DIALOGEX 0, 0, 279, 115, 0
+STYLE DS_SETFONT | DS_CONTEXTHELP | WS_POPUPWINDOW | WS_VISIBLE | WS_DLGFRAME | WS_MINIMIZEBOX
+EXSTYLE WS_EX_CONTEXTHELP
+CAPTION "Open Serial Port"
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+FONT 8, "MS Shell Dlg"
+{
+    LTEXT            "Path:", 65535, 8, 7, 19, 10, NOT WS_GROUP
+    COMBOBOX         "", 1101, 32, 5, 238, 81, CBS_DROPDOWN
+    AUTOCHECKBOX     "This is a serial port, use the following UART settings", 1102, 8, 27, 262, 10
+    LTEXT            "Baud Rate:", 65535, 8, 47, 43, 10, NOT WS_GROUP
+    EDITTEXT         "9600", 1103, 6, 59, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+    LTEXT            "Data Bits:", 65535, 8, 81, 43, 10, NOT WS_GROUP
+    EDITTEXT         "8", 1104, 5, 93, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+    LTEXT            "Parity Bit:", 65535, 99, 47, 43, 10, NOT WS_GROUP
+    COMBOBOX         "None", 1105, 96, 59, 83, 81, CBS_DROPDOWNLIST
+    LTEXT            "Stop Bits:", 65535, 99, 81, 43, 10, NOT WS_GROUP
+    COMBOBOX         "1", 1106, 96, 93, 83, 81, CBS_DROPDOWNLIST
+    LTEXT            "Flow Control:", 65535, 189, 47, 43, 10, NOT WS_GROUP
+    COMBOBOX         "None", 1107, 187, 59, 83, 81, CBS_DROPDOWNLIST
+    PUSHBUTTON       "Open", 1108, 208, 84, 61, 23
+}
