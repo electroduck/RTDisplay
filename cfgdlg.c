@@ -58,6 +58,11 @@ static INT_PTR s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wPar
 	case WM_COMMAND:
 		return s_OnCDCommand(hDialogWindow, pinfPort, LOWORD(wParam), HIWORD(wParam), (HWND)lParam);
 
+	case WM_CLOSE:
+		if (!EndDialog(hDialogWindow, IDCLOSE))
+			ShowErrorMessage(GetLastError(), "closing configuration dialog");
+		return (INT_PTR)TRUE;
+
 	default:
 		return (INT_PTR)FALSE;
 	}

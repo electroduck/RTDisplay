@@ -16,7 +16,7 @@ FONT 8, "MS Shell Dlg"
         LTEXT            "Baud Rate:", 1110, 8, 47, 43, 10, NOT WS_GROUP
         EDITTEXT         1103, 6, 59, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
         LTEXT            "Data Bits:", 1111, 8, 81, 43, 10, NOT WS_GROUP
-        EDITTEXT         1104, 5, 93, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        EDITTEXT         1104, 6, 93, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
         LTEXT            "Parity Bit:", 1112, 99, 47, 43, 10, NOT WS_GROUP
         COMBOBOX         1105, 96, 59, 81, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
         LTEXT            "Stop Bits:", 1113, 190, 81, 43, 10, NOT WS_GROUP
