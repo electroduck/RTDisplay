@@ -3,28 +3,34 @@
 
 #include <winres.h>
 
-1100 DIALOGEX 0, 0, 279, 141, 0
-STYLE DS_SETFONT | DS_CONTEXTHELP | DS_CENTER | WS_POPUPWINDOW | WS_VISIBLE | WS_DLGFRAME | WS_MINIMIZEBOX
+1100 DIALOGEX 0, 0, 292, 161, 0
+STYLE DS_SETFONT | DS_CENTER | DS_CONTEXTHELP | WS_POPUPWINDOW | WS_VISIBLE | WS_DLGFRAME | WS_MINIMIZEBOX
 EXSTYLE WS_EX_CONTEXTHELP
 CAPTION "Open Serial Port"
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 FONT 8, "MS Shell Dlg"
 {
-        LTEXT            "Path:", 1116, 8, 7, 19, 10, NOT WS_GROUP
-        COMBOBOX         1101, 32, 5, 238, 81, CBS_DROPDOWN | CBS_SORT | NOT WS_TABSTOP
-        AUTOCHECKBOX     "This is a serial port, use the following UART settings", 1102, 8, 27, 262, 10
-        LTEXT            "Baud Rate:", 1110, 8, 47, 43, 10, NOT WS_GROUP
-        EDITTEXT         1103, 6, 59, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
-        LTEXT            "Data Bits:", 1111, 8, 81, 43, 10, NOT WS_GROUP
-        EDITTEXT         1104, 6, 93, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
-        LTEXT            "Parity Bit:", 1112, 99, 47, 43, 10, NOT WS_GROUP
-        COMBOBOX         1105, 96, 59, 81, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
-        LTEXT            "Stop Bits:", 1113, 190, 81, 43, 10, NOT WS_GROUP
-        COMBOBOX         1106, 186, 93, 83, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
-        LTEXT            "Flow Control:", 1114, 189, 47, 43, 10, NOT WS_GROUP
-        COMBOBOX         1107, 185, 59, 83, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
-        PUSHBUTTON       "Open", 1108, 5, 116, 264, 15
-        LTEXT            "Parity Error Value:", 1115, 99, 81, 70, 10, NOT WS_GROUP
-        EDITTEXT         1109, 96, 93, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        GROUPBOX         "Serial Format", 1117, 8, 41, 275, 80
+        LTEXT            "Path:", 1116, 11, 9, 19, 10, NOT WS_GROUP
+        COMBOBOX         1101, 35, 7, 238, 81, CBS_DROPDOWN | CBS_SORT | NOT WS_TABSTOP
+        LTEXT            "Baud Rate:", 1118, 16, 54, 43, 10, NOT WS_GROUP
+        EDITTEXT         1103, 14, 66, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        LTEXT            "Data Bits:", 1120, 16, 89, 43, 10, NOT WS_GROUP
+        EDITTEXT         1104, 14, 100, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        LTEXT            "Parity Bit:", 1112, 107, 54, 43, 10, NOT WS_GROUP
+        COMBOBOX         1105, 104, 66, 81, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
+        LTEXT            "Stop Bits:", 1113, 198, 89, 43, 10, NOT WS_GROUP
+        COMBOBOX         1106, 194, 100, 83, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
+        LTEXT            "Flow Control:", 1114, 197, 54, 43, 10, NOT WS_GROUP
+        COMBOBOX         1107, 193, 66, 83, 81, CBS_DROPDOWNLIST | NOT WS_TABSTOP
+        PUSHBUTTON       "Open", 1108, 215, 130, 67, 22
+        LTEXT            "Parity Error Value:", 1115, 107, 89, 70, 10, NOT WS_GROUP
+        EDITTEXT         1109, 104, 100, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        LTEXT            "Image Width:", 1119, 16, 127, 43, 10, NOT WS_GROUP
+        LTEXT            "Image Height:", 1121, 107, 127, 46, 10, NOT WS_GROUP
+        EDITTEXT         1111, 104, 139, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        EDITTEXT         1110, 14, 139, 81, 13, ES_LEFT | ES_NUMBER | NOT WS_BORDER, WS_EX_CLIENTEDGE
+        AUTOCHECKBOX     "This is a serial port, use the following UART settings", 1102, 8, 27, 267, 10
 }
+
 

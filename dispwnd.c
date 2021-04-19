@@ -2,6 +2,8 @@
 
 typedef struct RtdDispWndData_struct {
 	HANDLE m_hPort;
+	HBITMAP m_hBitmap;
+	RtdPortInfo_t m_infPort;
 } RtdDispWndData_t;
 
 static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wParam, LPARAM lParam);
@@ -86,6 +88,8 @@ static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 		ShowErrorMessage(GetLastError(), "allocating memory for display window data");
 		return -1;
 	}
+
+	pData->m_infPort = *pinfPort;
 
 	pData->m_hPort = CreateFileA(pinfPort->m_szPath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
 		OPEN_EXISTING, 0, NULL);

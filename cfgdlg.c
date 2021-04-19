@@ -145,7 +145,9 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 			goto L_nopaths;
 		}
 	}
+
 L_nopaths:
+	if (hCommKey) RegCloseKey(hCommKey);
 
 	// Select the first port (if found)
 	if (nValueIndex > 0) {
@@ -183,7 +185,14 @@ L_nopaths:
 		ARRAYSIZE(s_arrStopBitsItems));
 	s_SetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_STOPBITSBOX, "stop bit count", (int)RTDISPLAY_PORT_STOPBITS_ONE);
 
-	if (hCommKey) RegCloseKey(hCommKey);
+	// Width
+	if (!SetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGWIDTH, 640, FALSE))
+		ShowErrorMessage(GetLastError(), "setting default image width");
+
+	// Height
+	if (!SetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGHEIGHT, 480, FALSE))
+		ShowErrorMessage(GetLastError(), "setting default image height");
+
 	return (INT_PTR)TRUE;
 }
 
@@ -265,6 +274,22 @@ static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID
 				return (INT_PTR)TRUE;
 			else
 				pinfPort->m_typeStop = (RtdPortStopBits_t)nSelItem;
+		}
+
+		// Image width
+		pinfPort->m_nWidth = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGWIDTH, &bTranslated, FALSE);
+		if (!bTranslated) {
+			GetDlgItemTextA(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGWIDTH, szValue, sizeof(szValue));
+			s_ReportInvalidValue(hWnd, "image width", szValue, "Must be a number");
+			return (INT_PTR)TRUE;
+		}
+
+		// Image height
+		pinfPort->m_nHeight = GetDlgItemInt(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGHEIGHT, &bTranslated, FALSE);
+		if (!bTranslated) {
+			GetDlgItemTextA(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_IMGHEIGHT, szValue, sizeof(szValue));
+			s_ReportInvalidValue(hWnd, "image height", szValue, "Must be a number");
+			return (INT_PTR)TRUE;
 		}
 
 		// All OK

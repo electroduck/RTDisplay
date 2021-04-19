@@ -41,6 +41,9 @@ typedef struct RtdPortInfo_struct {
 	RtdPortParity_t m_typeParity;
 	RtdPortStopBits_t m_typeStop;
 	RtdPortFlowControl_t m_typeFlowCtl;
+
+	// Image configuration
+	DWORD m_nWidth, m_nHeight;
 } RtdPortInfo_t;
 
 // Returns the same error code passed in
