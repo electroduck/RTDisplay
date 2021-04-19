@@ -8,10 +8,10 @@ add_executable (RTDisplay WIN32
 	dispwnd.c
 	dispwnd.h
 	main.c
-	RTDisplay.rc
+	rtdisplay.rc
 )
 
 target_link_libraries (RTDisplay PRIVATE kernel32 user32 gdi32 comctl32)
 
-add_executable (TestGen testgen.c)
+add_executable (TestGen testgen.c testgen.rc)
 target_link_libraries(TestGen PRIVATE kernel32 user32 gdi32)
