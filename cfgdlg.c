@@ -71,7 +71,16 @@ static INT_PTR s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wPar
 static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 	HICON hIconLarge, hIconSmall;
 	HINSTANCE hInstance;
+	LSTATUS nStatus;
+	HKEY hCommKey;
+	char szPortWin32Path[MAX_PATH];
+	char szPortNTPath[MAX_PATH];
+	DWORD nValueIndex, nPortNameLength, nPortNTPathLength, nValueType;
+	LPSTR pszPortName;
+	HWND hPathBoxWindow;
 
+	nValueIndex = 0;
+	hCommKey = NULL;
 	hInstance = GetModuleHandleA(NULL);
 	SetWindowLongPtrA(hWnd, GWLP_USERDATA, (LONG_PTR)pinfPort);
 
@@ -91,6 +100,58 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 		ShowErrorMessage(GetLastError(), "loading small settings icon");
 
 	// COM port paths
+	hPathBoxWindow = GetDlgItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_PATHBOX);
+	if (!hPathBoxWindow) {
+		ShowErrorMessage(GetLastError(), "finding port path control");
+		goto L_nopaths;
+	}
+
+	nStatus = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ, &hCommKey);
+	if (nStatus != 0){
+		ShowErrorMessage(nStatus, "opening COM port list");
+		goto L_nopaths;
+	}
+
+	for (nValueIndex = 0; /* until fail */; nValueIndex++) {
+		// Prepend \\.\ to the port name
+		(void)lstrcpynA(szPortWin32Path, "\\\\.\\", sizeof(szPortWin32Path));
+		pszPortName = szPortWin32Path + 4; // \\.\ takes up 4 chars
+		nPortNameLength = sizeof(szPortWin32Path) - 4;
+		nPortNTPathLength = sizeof(szPortNTPath);
+		nValueType = REG_SZ;
+
+		// Query the name
+		nStatus = RegEnumValueA(hCommKey, nValueIndex, szPortNTPath, &nPortNTPathLength, NULL, &nValueType,
+			pszPortName, &nPortNameLength);
+		switch (nStatus) {
+		case ERROR_SUCCESS:
+			pszPortName[nPortNameLength] = '\0'; // function does not null-terminate automatically
+			switch (SendMessageA(hPathBoxWindow, CB_ADDSTRING, 0, (LPARAM)szPortWin32Path)) {
+			case CB_ERR:
+				MessageBoxA(hWnd, "Error adding port name to path box", "Error", MB_ICONERROR);
+				goto L_nopaths;
+
+			case CB_ERRSPACE:
+				MessageBoxA(hWnd, "Not enough space to add all port names to path box", "Error", MB_ICONERROR);
+				goto L_nopaths;
+			}
+			break;
+
+		case ERROR_NO_MORE_ITEMS: // that's it
+			goto L_nopaths;
+
+		default:
+			ShowErrorMessage((DWORD)nStatus, "enumerating COM ports");
+			goto L_nopaths;
+		}
+	}
+L_nopaths:
+
+	// Select the first port (if found)
+	if (nValueIndex > 0) {
+		if (SendMessageA(hPathBoxWindow, CB_SETCURSEL, 0, 0) == CB_ERR)
+			MessageBoxA(hWnd, "Error selecting default port in path box", "Error", MB_ICONERROR);
+	}
 
 	// Is serial port
 	if (!CheckDlgButton(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_SERIALCHECK, BST_CHECKED))
@@ -122,6 +183,7 @@ static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort) {
 		ARRAYSIZE(s_arrStopBitsItems));
 	s_SetSelectedItem(hWnd, RTDISPLAY_RES_DLG_SETTINGS_CTL_STOPBITSBOX, "stop bit count", (int)RTDISPLAY_PORT_STOPBITS_ONE);
 
+	if (hCommKey) RegCloseKey(hCommKey);
 	return (INT_PTR)TRUE;
 }
 
