@@ -46,7 +46,7 @@ BOOL RtdRegisterDisplayWindowClass(void) {
 		ZeroMemory(&wcxaDispWindow, sizeof(wcxaDispWindow));
 		wcxaDispWindow.cbSize = sizeof(wcxaDispWindow);
 		wcxaDispWindow.cbWndExtra = sizeof(RtdDispWndData_t*);
-		wcxaDispWindow.hbrBackground = GetStockObject(BLACK_BRUSH);
+		wcxaDispWindow.hbrBackground = CreateSolidBrush(RGB(0, 0, 255));
 		wcxaDispWindow.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wcxaDispWindow.hIcon = LoadIconA(s_hInstance, MAKEINTRESOURCEA(RTDISPLAY_RES_ICON_MONITOR));
 		wcxaDispWindow.hIconSm = LoadImageA(s_hInstance, MAKEINTRESOURCEA(RTDISPLAY_RES_ICON_MONITOR), IMAGE_ICON,
@@ -196,8 +196,7 @@ static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 		goto L_error_close;
 	}
 
-	memset(pData->m_pPixelData, 0xAA, pData->m_infBitmap.m_bmih.biSizeImage);
-	//RtlSecureZeroMemory(pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage);
+	RtlSecureZeroMemory(pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage);
 
 	// Start reader thread
 	pData->m_hThread = CreateThread(NULL, 0xFFFF, s_ReaderThreadProc, pData, 0, &pData->m_nThreadID);
