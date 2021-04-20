@@ -18,6 +18,7 @@ typedef struct RtdDispWndData_struct {
 	RtdBitmapInfo8bpp_t m_infBitmap;
 	DWORD m_nBitmapStride, m_nThreadID;
 	BOOL m_bThreadExitDesired;
+	RtdDisplayWindowDestroyCB_t m_procDestroyCB;
 } RtdDispWndData_t;
 
 static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wParam, LPARAM lParam);
@@ -66,6 +67,12 @@ BOOL RtdRegisterDisplayWindowClass(void) {
 HWND RtdCreateDisplayWindow(_In_ RtdPortInfo_t* pinfPort) {
 	return CreateWindowExA(WS_EX_OVERLAPPEDWINDOW, s_cszDispWindowClass, "RTDisplay", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
 		CW_USEDEFAULT, 800, 600, NULL, NULL, s_hInstance, (LPVOID)pinfPort);
+}
+
+void RtdSetDisplayWindowDestroyCB(HWND hWnd, RtdDisplayWindowDestroyCB_t procDestroyCB) {
+	RtdDispWndData_t* pData;
+	pData = (RtdDispWndData_t*)GetWindowLongPtrA(hWnd, 0);
+	if (pData) pData->m_procDestroyCB = procDestroyCB;
 }
 
 static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wParam, LPARAM lParam) {
@@ -216,6 +223,9 @@ L_error_free:
 
 static void s_OnDWDestroy(HWND hWnd, RtdDispWndData_t* pData) {
 	if (pData) {
+		if (pData->m_procDestroyCB)
+			pData->m_procDestroyCB(hWnd);
+
 		if (pData->m_hThread) {
 			pData->m_bThreadExitDesired = TRUE;
 			CancelSynchronousIo(pData->m_hThread);
@@ -256,8 +266,8 @@ static DWORD WINAPI s_ReaderThreadProc(LPVOID pDispWndData) {
 
 	// Continuously read frames
 	for (;;) {
-		// Loop through scanlines
-		for (nPosY = 0; nPosY < pData->m_infBitmap.m_bmih.biHeight; nPosY++) {
+		// Loop through scanlines - Reverse order due to Windows bitmaps being bottom-up
+		for (nPosY = pData->m_infBitmap.m_bmih.biHeight - 1; nPosY >= 0; nPosY--) {
 			// Read each scanline before moving on to the next
 			for (nPosX = 0, nBytesRead = 0; nPosX < pData->m_infBitmap.m_bmih.biWidth; nPosX += nBytesRead) {
 				// Check before reading from port in case CancelSynchronousIo didn't have anything to cancel

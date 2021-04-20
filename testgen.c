@@ -95,7 +95,8 @@ int main(int argc, char** argv) {
 	s_PrintMessage(hStdOut, "Pipe connected\r\n", arrInserts);
 
 	for (;;) {
-		for (nPosY = 0; nPosY < infBitmap8bpp.m_bmih.biHeight; nPosY++) {
+		// Reverse order because Windows bitmaps are stored flipped vertically
+		for (nPosY = infBitmap8bpp.m_bmih.biHeight - 1; nPosY >= 0; nPosY--) {
 #if TESTGEN_DELAY_PIXEL == 0
 			for (nPosX = 0; nPosX < infBitmap8bpp.m_bmih.biWidth; ) {
 				if (!WriteFile(hPipe, &pBitmapData[nPosX + nPosY * nBitmapStride], infBitmap8bpp.m_bmih.biWidth - nPosX, &nBytesWritten, NULL))

@@ -1,6 +1,8 @@
 #include "cfgdlg.h"
 #include "dispwnd.h"
 
+static void s_DisplayWindowDestroyed(HWND hDisplayWindow);
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pszCmdLine, int nShowCmd) {
 	RtdPortInfo_t infPort;
 	HWND hDispWnd;
@@ -21,6 +23,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pszCmdLin
 	if (!hDispWnd)
 		return ShowErrorMessage(GetLastError(), "creating display window");
 
+	RtdSetDisplayWindowDestroyCB(hDispWnd, s_DisplayWindowDestroyed);
 	ShowWindow(hDispWnd, nShowCmd);
 
 	while (GetMessageA(&msg, NULL, 0, 0)) {
@@ -52,4 +55,8 @@ DWORD ShowErrorMessage(DWORD nError, LPCSTR pcszContext) {
 	if (pszMessage) LocalFree((HLOCAL)pszMessage);
 
 	return nError;
+}
+
+static void s_DisplayWindowDestroyed(HWND hDisplayWindow) {
+	PostQuitMessage(0);
 }
