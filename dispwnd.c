@@ -70,7 +70,7 @@ HWND RtdCreateDisplayWindow(_In_ RtdPortInfo_t* pinfPort) {
 
 static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wParam, LPARAM lParam) {
 	RtdDispWndData_t* pData;
-	pData = GetWindowLongPtrA(hWnd, 0);
+	pData = (RtdDispWndData_t*)GetWindowLongPtrA(hWnd, 0);
 
 	switch (nMessage) {
 	case WM_CREATE:
@@ -176,14 +176,14 @@ static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 
 	// Palette
 	for (nColor = 0; nColor < 256; nColor++) {
-		pData->m_infBitmap.m_arrColors[nColor].rgbRed = nColor;
-		pData->m_infBitmap.m_arrColors[nColor].rgbGreen = nColor;
-		pData->m_infBitmap.m_arrColors[nColor].rgbBlue = nColor;
+		pData->m_infBitmap.m_arrColors[nColor].rgbRed = (BYTE)nColor;
+		pData->m_infBitmap.m_arrColors[nColor].rgbGreen = (BYTE)nColor;
+		pData->m_infBitmap.m_arrColors[nColor].rgbBlue = (BYTE)nColor;
 		pData->m_infBitmap.m_arrColors[nColor].rgbReserved = 0xFF;
 	}
 
 	// Create bitmap
-	pData->m_hBitmap = CreateDIBSection(NULL, &pData->m_infBitmap, DIB_RGB_COLORS, &pData->m_pPixelData, NULL, 0);
+	pData->m_hBitmap = CreateDIBSection(NULL, (BITMAPINFO*)&pData->m_infBitmap, DIB_RGB_COLORS, &pData->m_pPixelData, NULL, 0);
 	if (!pData->m_hBitmap) {
 		ShowErrorMessage(GetLastError(), "creating bitmap for received data");
 		goto L_error_close;
@@ -244,8 +244,9 @@ static void s_OnDWDestroy(HWND hWnd, RtdDispWndData_t* pData) {
 }
 
 static DWORD WINAPI s_ReaderThreadProc(LPVOID pDispWndData) {
-	DWORD nPosX, nPosY, nBytesRead, nError;
+	DWORD nBytesRead, nError;
 	RtdDispWndData_t* pData;
+	LONG nPosX, nPosY;
 
 	pData = pDispWndData;
 	if (!pData) {
@@ -265,7 +266,7 @@ static DWORD WINAPI s_ReaderThreadProc(LPVOID pDispWndData) {
 
 				// Read from port
 				if (!ReadFile(pData->m_hPort, &pData->m_pPixelData[nPosY * pData->m_nBitmapStride + nPosX],
-					pData->m_infBitmap.m_bmih.biWidth - nPosX, nBytesRead, NULL))
+					pData->m_infBitmap.m_bmih.biWidth - nPosX, &nBytesRead, NULL))
 				{
 					nError = GetLastError();
 					if ((nError == ERROR_OPERATION_ABORTED) && pData->m_bThreadExitDesired)

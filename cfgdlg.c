@@ -1,6 +1,6 @@
 #include "cfgdlg.h"
 
-static INT_PTR s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wParam, LPARAM lParam);
+static INT_PTR CALLBACK s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wParam, LPARAM lParam);
 static INT_PTR s_OnCDCreate(HWND hWnd, RtdPortInfo_t* pinfPort);
 static INT_PTR s_OnCDCommand(HWND hWnd, RtdPortInfo_t* pinfPort, WORD nControlID, WORD nNotifID, HWND hControlWindow);
 static void s_ReportInvalidValue(HWND hDialogWindow, LPCSTR pcszControl, LPCSTR pcszValue, LPCSTR pcszProblem);
@@ -47,7 +47,7 @@ int RtdShowConfigWindow(RtdPortInfo_t* pinfPort) {
 	}
 }
 
-static INT_PTR s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wParam, LPARAM lParam) {
+static INT_PTR CALLBACK s_ConfigDialogProc(HWND hDialogWindow, UINT nMessage, WPARAM wParam, LPARAM lParam) {
 	RtdPortInfo_t* pinfPort;
 	pinfPort = (RtdPortInfo_t*)GetWindowLongPtrA(hDialogWindow, GWLP_USERDATA);
 
