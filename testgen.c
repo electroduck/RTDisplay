@@ -18,7 +18,7 @@ static const char s_cszPipeName[] = "\\\\.\\pipe\\TestImageGenerator";
 static const char s_cDot = '.';
 static const char s_cszFrameWritten[] = "!\r\n";
 
-int main(int argc, char** argv) {
+void main(void) {
 	HINSTANCE hInstance;
 	HANDLE hHeap, hPipe, hStdOut;
 	HBITMAP hBitmap;
@@ -31,19 +31,19 @@ int main(int argc, char** argv) {
 	BYTE* pBitmapData;
 
 	hInstance = GetModuleHandleA(NULL);
-	if (!hInstance) return s_PrintError(GetLastError(), "querying module handle");
+	if (!hInstance) ExitProcess(s_PrintError(GetLastError(), "querying module handle"));
 
 	hHeap = GetProcessHeap();
-	if (!hHeap) return s_PrintError(GetLastError(), "querying process heap");
+	if (!hHeap) ExitProcess(s_PrintError(GetLastError(), "querying process heap"));
 
 	hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (!hStdOut) return s_PrintError(GetLastError(), "opening standard output");
+	if (!hStdOut) ExitProcess(s_PrintError(GetLastError(), "opening standard output"));
 
 	hBitmap = LoadImageA(hInstance, MAKEINTRESOURCEA(1000), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
-	if (!hBitmap) return s_PrintError(GetLastError(), "loading test bitmap");
+	if (!hBitmap) ExitProcess(s_PrintError(GetLastError(), "loading test bitmap"));
 
 	if (!GetObjectA((HANDLE)hBitmap, sizeof(infBitmapOrig), &infBitmapOrig))
-		return s_PrintError(GetLastError(), "querying test bitmap information");
+		ExitProcess(s_PrintError(GetLastError(), "querying test bitmap information"));
 
 	nBitmapStride = infBitmapOrig.bmWidth + (infBitmapOrig.bmWidth % 4);
 	infBitmap8bpp.m_bmih.biBitCount = 8;
@@ -72,25 +72,25 @@ int main(int argc, char** argv) {
 	s_PrintMessage(hStdOut, "Image width: %1!u!, height: %2!u!, stride: %3!u!, size: %4!u!\r\n", arrInserts);
 
 	pBitmapData = HeapAlloc(GetProcessHeap(), 0, infBitmap8bpp.m_bmih.biSizeImage);
-	if (!pBitmapData) return s_PrintError(GetLastError(), "allocating memory for bitmap data");
+	if (!pBitmapData) ExitProcess(s_PrintError(GetLastError(), "allocating memory for bitmap data"));
 
 	hScreenDC = GetDC(NULL);
-	if (!hScreenDC) return s_PrintError(GetLastError(), "opening screen device context");
+	if (!hScreenDC) ExitProcess(s_PrintError(GetLastError(), "opening screen device context"));
 
 	if (!GetDIBits(hScreenDC, hBitmap, 0, infBitmapOrig.bmHeight, pBitmapData, (LPBITMAPINFO)&infBitmap8bpp, DIB_RGB_COLORS))
-		return s_PrintError(GetLastError(), "copying bitmap data");
+		ExitProcess(s_PrintError(GetLastError(), "copying bitmap data"));
 
 	ReleaseDC(NULL, hScreenDC);
 
 	hPipe = CreateNamedPipeA(s_cszPipeName, PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE, 1, 0, 0, 0, NULL);
 	if (!hPipe || (hPipe == INVALID_HANDLE_VALUE))
-		return s_PrintError(GetLastError(), "creating named pipe");
+		ExitProcess(s_PrintError(GetLastError(), "creating named pipe"));
 
 	arrInserts[0] = (UINT_PTR)s_cszPipeName;
 	s_PrintMessage(hStdOut, "Created pipe %1\r\n", arrInserts);
 
 	if (!ConnectNamedPipe(hPipe, NULL))
-		return s_PrintError(GetLastError(), "waiting for pipe connection");
+		ExitProcess(s_PrintError(GetLastError(), "waiting for pipe connection"));
 
 	s_PrintMessage(hStdOut, "Pipe connected\r\n", arrInserts);
 
@@ -100,19 +100,19 @@ int main(int argc, char** argv) {
 #if TESTGEN_DELAY_PIXEL == 0
 			for (nPosX = 0; nPosX < infBitmap8bpp.m_bmih.biWidth; ) {
 				if (!WriteFile(hPipe, &pBitmapData[nPosX + nPosY * nBitmapStride], infBitmap8bpp.m_bmih.biWidth - nPosX, &nBytesWritten, NULL))
-					return s_PrintError(GetLastError(), "writing pixels to pipe");
+					ExitProcess(s_PrintError(GetLastError(), "writing pixels to pipe"));
 				nPosX += nBytesWritten;
 			}
 #else
 			for (nPosX = 0; nPosX < infBitmap8bpp.m_bmih.biWidth; nPosX++) {
 				if (!WriteFile(hPipe, &pBitmapData[nPosX + nPosY * nBitmapStride], 1, &nBytesWritten, NULL))
-					return s_PrintError(GetLastError(), "writing pixel to pipe");
+					ExitProcess(s_PrintError(GetLastError(), "writing pixel to pipe"));
 				Sleep(TESTGEN_DELAY_PIXEL);
 			}
 #endif
 
 			if (!WriteFile(hStdOut, &s_cDot, 1, &nBytesWritten, NULL))
-				return s_PrintError(GetLastError(), "reporting scanline written");
+				ExitProcess(s_PrintError(GetLastError(), "reporting scanline written"));
 
 #if TESTGEN_DELAY_LINE != 0
 			Sleep(TESTGEN_DELAY_LINE);
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 		}
 
 		if (!WriteFile(hStdOut, s_cszFrameWritten, 3, &nBytesWritten, NULL))
-			return s_PrintError(GetLastError(), "reporting frame written");
+			ExitProcess(s_PrintError(GetLastError(), "reporting frame written"));
 
 #if TESTGEN_DELAY_FRAME != 0
 		Sleep(TESTGEN_DELAY_FRAME);

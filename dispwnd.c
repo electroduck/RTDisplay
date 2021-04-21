@@ -43,7 +43,7 @@ BOOL RtdRegisterDisplayWindowClass(void) {
 		s_hInstance = GetModuleHandleA(NULL);
 
 	if (s_nDispWindowClass == 0) {
-		ZeroMemory(&wcxaDispWindow, sizeof(wcxaDispWindow));
+		RtlSecureZeroMemory(&wcxaDispWindow, sizeof(wcxaDispWindow));
 		wcxaDispWindow.cbSize = sizeof(wcxaDispWindow);
 		wcxaDispWindow.cbWndExtra = sizeof(RtdDispWndData_t*);
 		wcxaDispWindow.hbrBackground = CreateSolidBrush(RGB(0, 0, 255));

@@ -3,35 +3,35 @@
 
 static void s_DisplayWindowDestroyed(HWND hDisplayWindow);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pszCmdLine, int nShowCmd) {
+void main(void) {
 	RtdPortInfo_t infPort;
 	HWND hDispWnd;
 	MSG msg;
 
 	if (!RtdRegisterDisplayWindowClass())
-		return ShowErrorMessage(GetLastError(), "registering display window class");
+		ExitProcess(ShowErrorMessage(GetLastError(), "registering display window class"));
 
 	switch (RtdShowConfigWindow(&infPort)) {
-	case 0: return 0;
+	case 0: ExitProcess(0);
 	case 1: break;
 	case -1:
 	default:
-		return ShowErrorMessage(GetLastError(), "showing configuration window");
+		ExitProcess(ShowErrorMessage(GetLastError(), "showing configuration window"));
 	}
 
 	hDispWnd = RtdCreateDisplayWindow(&infPort);
 	if (!hDispWnd)
-		return ShowErrorMessage(GetLastError(), "creating display window");
+		ExitProcess(ShowErrorMessage(GetLastError(), "creating display window"));
 
 	RtdSetDisplayWindowDestroyCB(hDispWnd, s_DisplayWindowDestroyed);
-	ShowWindow(hDispWnd, nShowCmd);
+	ShowWindow(hDispWnd, SW_SHOW);
 
 	while (GetMessageA(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessageA(&msg);
 	}
 
-	return 0;
+	ExitProcess(0);
 }
 
 DWORD ShowErrorMessage(DWORD nError, LPCSTR pcszContext) {
