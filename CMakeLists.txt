@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.0)
 project (RTDisplay)
 
+add_definitions (-DRTDISPLAY_ENABLE_WINMAIN)
+
 add_executable (RTDisplay WIN32
 	cfgdlg.c
 	cfgdlg.h

@@ -34,6 +34,13 @@ void main(void) {
 	ExitProcess(0);
 }
 
+#ifdef RTDISPLAY_ENABLE_WINMAIN
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR pszCmdLine, int nCmdShow) {
+	main();
+	return 0;
+}
+#endif
+
 DWORD ShowErrorMessage(DWORD nError, LPCSTR pcszContext) {
 	LPSTR pszDesc, pszMessage;
 	void* arrArgs[3];

@@ -135,7 +135,7 @@ static LRESULT s_OnDWCreate(HWND hWnd, LPCREATESTRUCTA pCreateData) {
 
 	// Configure if serial port
 	if (pinfPort->m_bIsSerialPort) {
-		ZeroMemory(&dcb, sizeof(dcb));
+		RtlSecureZeroMemory(&dcb, sizeof(dcb));
 		dcb.DCBlength = sizeof(dcb);
 
 		if (!GetCommState(pData->m_hPort, &dcb)) {
