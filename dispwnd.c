@@ -33,6 +33,8 @@ static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData);
 static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData);
 static BOOL s_ShowSaveDialog(LPOPENFILENAMEA pofn);
 
+static const char s_cszHexDumpHeader[] = " Offset    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F\r\n"
+	"-----------------------------------------------------------\r\n";
 static const char s_cszDispWindowClass[] = "RTDisplay_DisplayWindowClass";
 static ATOM s_nDispWindowClass = 0;
 static HINSTANCE s_hInstance = 0;
@@ -390,6 +392,7 @@ static void s_OnCmdSaveImage(HWND hWnd, RtdDispWndData_t* pData) {
 	ofnSaveImage.lpstrFilter = "Bitmap image (.bmp)\0*.bmp\0";
 	ofnSaveImage.lpstrFile = szFilename;
 	ofnSaveImage.nMaxFile = sizeof(szFilename);
+	ofnSaveImage.lpstrDefExt = "bmp";
 	ofnSaveImage.lpstrTitle = "Save Image";
 	ofnSaveImage.Flags = OFN_OVERWRITEPROMPT;
 	if (!s_ShowSaveDialog(&ofnSaveImage)) return;
@@ -407,32 +410,119 @@ static void s_OnCmdSaveImage(HWND hWnd, RtdDispWndData_t* pData) {
 	bmfh.bfOffBits = sizeof(bmfh) + sizeof(pData->m_infBitmap);
 
 	if (!WriteFile(hFile, &bmfh, sizeof(bmfh), &nWritten, NULL)) {
+		CloseHandle(hFile);
 		ShowErrorMessage(GetLastError(), "writing bitmap file header");
 		return;
 	}
 
 	if (!WriteFile(hFile, &pData->m_infBitmap, sizeof(pData->m_infBitmap), &nWritten, NULL)) {
+		CloseHandle(hFile);
 		ShowErrorMessage(GetLastError(), "writing bitmap information header");
 		return;
 	}
 
 	if (!WriteFile(hFile, pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage, &nWritten, NULL)) {
+		CloseHandle(hFile);
 		ShowErrorMessage(GetLastError(), "writing bitmap data");
 		return;
 	}
 
 	CloseHandle(hFile);
-	hFile = NULL;
-
 	MessageBoxA(hWnd, "Image saved.", "Saved", MB_ICONINFORMATION);
 }
 
 static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData) {
-	// TODO
+	OPENFILENAMEA ofnSaveData;
+	char szFilename[MAX_PATH];
+	HANDLE hFile;
+	DWORD nWritten;
+
+	szFilename[0] = '\0';
+
+	RtlSecureZeroMemory(&ofnSaveData, sizeof(ofnSaveData));
+	ofnSaveData.lStructSize = sizeof(ofnSaveData);
+	ofnSaveData.hwndOwner = hWnd;
+	ofnSaveData.lpstrFilter = "Raw data stream (.bin)\0*.bin\0";
+	ofnSaveData.lpstrFile = szFilename;
+	ofnSaveData.nMaxFile = sizeof(szFilename);
+	ofnSaveData.lpstrDefExt = "bin";
+	ofnSaveData.lpstrTitle = "Save Image Data";
+	ofnSaveData.Flags = OFN_OVERWRITEPROMPT;
+	if (!s_ShowSaveDialog(&ofnSaveData)) return;
+
+	hFile = CreateFileA(ofnSaveData.lpstrFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		ShowErrorMessage(GetLastError(), "creating data stream file");
+		return;
+	}
+
+	if (!WriteFile(hFile, pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage, &nWritten, NULL)) {
+		CloseHandle(hFile);
+		ShowErrorMessage(GetLastError(), "writing bitmap data");
+		return;
+	}
+
+	CloseHandle(hFile);
+	MessageBoxA(hWnd, "Data stream saved.", "Saved", MB_ICONINFORMATION);
 }
 
 static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData) {
-	// TODO
+	OPENFILENAMEA ofnSaveText;
+	char szFilename[MAX_PATH];
+	HANDLE hFile;
+	DWORD nWritten, nBaseLocation, nOffset, nPixel;
+	char szLine[150];
+	UINT_PTR arrInserts[17];
+
+	szFilename[0] = '\0';
+
+	RtlSecureZeroMemory(&ofnSaveText, sizeof(ofnSaveText));
+	ofnSaveText.lStructSize = sizeof(ofnSaveText);
+	ofnSaveText.hwndOwner = hWnd;
+	ofnSaveText.lpstrFilter = "Text file containing hexadecimal values (.txt)\0*.txt\0";
+	ofnSaveText.lpstrFile = szFilename;
+	ofnSaveText.nMaxFile = sizeof(szFilename);
+	ofnSaveText.lpstrTitle = "Save Image Data as Text";
+	ofnSaveText.lpstrDefExt = "txt";
+	ofnSaveText.Flags = OFN_OVERWRITEPROMPT;
+	if (!s_ShowSaveDialog(&ofnSaveText)) return;
+
+	hFile = CreateFileA(ofnSaveText.lpstrFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		ShowErrorMessage(GetLastError(), "creating hex dump file");
+		return;
+	}
+
+	if (!WriteFile(hFile, s_cszHexDumpHeader, sizeof(s_cszHexDumpHeader) - 1, &nWritten, NULL)) {
+		CloseHandle(hFile);
+		ShowErrorMessage(GetLastError(), "writing hex dump header");
+		return;
+	}
+
+	for (nBaseLocation = 0; nBaseLocation < pData->m_infBitmap.m_bmih.biSizeImage; nBaseLocation += 16) {
+		arrInserts[0] = nBaseLocation;
+
+		for (nOffset = 0, nPixel = nBaseLocation; nOffset < 16; nOffset++, nPixel++)
+			arrInserts[nOffset + 1] = (nPixel < pData->m_infBitmap.m_bmih.biSizeImage) ? (UINT_PTR)pData->m_pPixelData[nPixel] : 0;
+
+		if (!FormatMessageA(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+			"%1!08X!:  %2!02X! %3!02X! %4!02X! %5!02X! %6!02X! %7!02X! %8!02X! %9!02X!  %10!02X! %11!02X! %12!02X! %13!02X! %14!02X! %15!02X! %16!02X! %17!02X!\r\n",
+			0, 0, szLine, sizeof(szLine), (va_list*)arrInserts))
+		{
+			CloseHandle(hFile);
+			ShowErrorMessage(GetLastError(), "formatting hex dump line");
+			return;
+		}
+
+		if (!WriteFile(hFile, szLine, 61, &nWritten, NULL)) {
+			CloseHandle(hFile);
+			ShowErrorMessage(GetLastError(), "writing hex dump line");
+			return;
+		}
+	}
+
+	CloseHandle(hFile);
+	MessageBoxA(hWnd, "Data stream saved as hexadecimal values.", "Saved", MB_ICONINFORMATION);
 }
 
 static BOOL s_ShowSaveDialog(LPOPENFILENAMEA pofn) {
