@@ -1,4 +1,5 @@
 #include "dispwnd.h"
+#include <commdlg.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:6258)
@@ -27,6 +28,10 @@ static void s_OnDWDestroy(HWND hWnd, RtdDispWndData_t* pData);
 static DWORD WINAPI s_ReaderThreadProc(LPVOID pDispWndData);
 static void s_OnDWPaint(HWND hWnd, RtdDispWndData_t* pData);
 static void s_OnDWDrawTo(HWND hWnd, RtdDispWndData_t* pData, HDC hDC);
+static void s_OnCmdSaveImage(HWND hWnd, RtdDispWndData_t* pData);
+static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData);
+static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData);
+static BOOL s_ShowSaveDialog(LPOPENFILENAMEA pofn);
 
 static const char s_cszDispWindowClass[] = "RTDisplay_DisplayWindowClass";
 static ATOM s_nDispWindowClass = 0;
@@ -54,7 +59,7 @@ BOOL RtdRegisterDisplayWindowClass(void) {
 		wcxaDispWindow.hInstance = s_hInstance;
 		wcxaDispWindow.lpfnWndProc = s_DisplayWindowProc;
 		wcxaDispWindow.lpszClassName = s_cszDispWindowClass;
-		wcxaDispWindow.lpszMenuName = NULL;
+		wcxaDispWindow.lpszMenuName = MAKEINTRESOURCEA(RTDISPLAY_RES_MENU_DISPWND);
 		wcxaDispWindow.style = CS_HREDRAW | CS_VREDRAW;
 
 		s_nDispWindowClass = RegisterClassExA(&wcxaDispWindow);
@@ -97,6 +102,25 @@ static LRESULT CALLBACK s_DisplayWindowProc(HWND hWnd, UINT nMessage, WPARAM wPa
 
 	case WM_PRINTCLIENT:
 		s_OnDWDrawTo(hWnd, pData, (HDC)wParam);
+		return 0;
+
+	case WM_COMMAND:
+		if ((HIWORD(wParam) == 0) && (lParam == 0)) {
+			// Menu item
+			switch (LOWORD(wParam)) {
+			case RTDISPLAY_RES_MENU_DISPWND_ITEM_SAVE_IMAGE:
+				s_OnCmdSaveImage(hWnd, pData);
+				break;
+
+			case RTDISPLAY_RES_MENU_DISPWND_ITEM_SAVE_BINARY:
+				s_OnCmdSaveBinary(hWnd, pData);
+				break;
+
+			case RTDISPLAY_RES_MENU_DISPWND_ITEM_SAVE_TEXT:
+				s_OnCmdSaveText(hWnd, pData);
+				break;
+			}
+		}
 		return 0;
 
 	default:
@@ -349,4 +373,90 @@ L_exit_desel:
 L_exit_deldc:
 	DeleteDC(hTempDC);
 	hTempDC = NULL;
+}
+
+static void s_OnCmdSaveImage(HWND hWnd, RtdDispWndData_t* pData) {
+	OPENFILENAMEA ofnSaveImage;
+	char szFilename[MAX_PATH];
+	HANDLE hFile;
+	BITMAPFILEHEADER bmfh;
+	DWORD nWritten;
+
+	szFilename[0] = '\0';
+
+	RtlSecureZeroMemory(&ofnSaveImage, sizeof(ofnSaveImage));
+	ofnSaveImage.lStructSize = sizeof(ofnSaveImage);
+	ofnSaveImage.hwndOwner = hWnd;
+	ofnSaveImage.lpstrFilter = "Bitmap image (.bmp)\0*.bmp\0";
+	ofnSaveImage.lpstrFile = szFilename;
+	ofnSaveImage.nMaxFile = sizeof(szFilename);
+	ofnSaveImage.lpstrTitle = "Save Image";
+	ofnSaveImage.Flags = OFN_OVERWRITEPROMPT;
+	if (!s_ShowSaveDialog(&ofnSaveImage)) return;
+
+	hFile = CreateFileA(ofnSaveImage.lpstrFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		ShowErrorMessage(GetLastError(), "creating image file");
+		return;
+	}
+
+	bmfh.bfType = MAKEWORD('B', 'M');
+	bmfh.bfSize = sizeof(bmfh) + sizeof(pData->m_infBitmap) + pData->m_infBitmap.m_bmih.biSizeImage;
+	bmfh.bfReserved1 = 0;
+	bmfh.bfReserved2 = 0;
+	bmfh.bfOffBits = sizeof(bmfh) + sizeof(pData->m_infBitmap);
+
+	if (!WriteFile(hFile, &bmfh, sizeof(bmfh), &nWritten, NULL)) {
+		ShowErrorMessage(GetLastError(), "writing bitmap file header");
+		return;
+	}
+
+	if (!WriteFile(hFile, &pData->m_infBitmap, sizeof(pData->m_infBitmap), &nWritten, NULL)) {
+		ShowErrorMessage(GetLastError(), "writing bitmap information header");
+		return;
+	}
+
+	if (!WriteFile(hFile, pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage, &nWritten, NULL)) {
+		ShowErrorMessage(GetLastError(), "writing bitmap data");
+		return;
+	}
+
+	CloseHandle(hFile);
+	hFile = NULL;
+
+	MessageBoxA(hWnd, "Image saved.", "Saved", MB_ICONINFORMATION);
+}
+
+static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData) {
+	// TODO
+}
+
+static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData) {
+	// TODO
+}
+
+static BOOL s_ShowSaveDialog(LPOPENFILENAMEA pofn) {
+	DWORD nDialogError;
+	LPSTR pszErrorMessage;
+	UINT_PTR arrInserts[1];
+
+	if (!GetSaveFileNameA(pofn)) {
+		nDialogError = CommDlgExtendedError();
+
+		if (nDialogError != 0) {
+			arrInserts[0] = nDialogError;
+			pszErrorMessage = NULL;
+
+			FormatMessageA(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+				"Error 0x%1!04X! displaying save dialog", 0, 0, (LPSTR)&pszErrorMessage, 0, (va_list*)arrInserts);
+			MessageBoxA(pofn ? pofn->hwndOwner : NULL, pszErrorMessage ? pszErrorMessage : "Error displaying save dialog",
+				"Error", MB_ICONERROR);
+
+			if (pszErrorMessage) LocalFree((HLOCAL)pszErrorMessage);
+		}
+
+		return FALSE;
+	}
+
+	return TRUE;
 }

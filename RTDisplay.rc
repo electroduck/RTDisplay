@@ -33,4 +33,12 @@ FONT 8, "MS Shell Dlg"
         AUTOCHECKBOX     "This is a serial port, use the following UART settings", 1102, 8, 27, 267, 10
 }
 
-
+1200 MENU
+{
+    POPUP "&Save"
+    {
+        MENUITEM "&Image", 1201
+        MENUITEM "&Binary Data", 1202
+        MENUITEM "&Text File (hex values)", 1203
+    }
+}
