@@ -436,6 +436,7 @@ static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData) {
 	char szFilename[MAX_PATH];
 	HANDLE hFile;
 	DWORD nWritten;
+	LONG nLine;
 
 	szFilename[0] = '\0';
 
@@ -456,10 +457,12 @@ static void s_OnCmdSaveBinary(HWND hWnd, RtdDispWndData_t* pData) {
 		return;
 	}
 
-	if (!WriteFile(hFile, pData->m_pPixelData, pData->m_infBitmap.m_bmih.biSizeImage, &nWritten, NULL)) {
-		CloseHandle(hFile);
-		ShowErrorMessage(GetLastError(), "writing bitmap data");
-		return;
+	for (nLine = pData->m_infBitmap.m_bmih.biHeight - 1; nLine >= 0; nLine--) {
+		if (!WriteFile(hFile, &pData->m_pPixelData[nLine * pData->m_nBitmapStride], pData->m_infBitmap.m_bmih.biWidth, &nWritten, NULL)) {
+			CloseHandle(hFile);
+			ShowErrorMessage(GetLastError(), "writing bitmap data");
+			return;
+		}
 	}
 
 	CloseHandle(hFile);
@@ -473,6 +476,16 @@ static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData) {
 	DWORD nWritten, nBaseLocation, nOffset, nPixel;
 	char szLine[150];
 	UINT_PTR arrInserts[17];
+	LPBYTE pDataUnflipped;
+	LPBYTE pCurPixelUnflipped;
+	HANDLE hHeap;
+	LONG nLine;
+
+	hHeap = GetProcessHeap();
+	if (!hHeap) {
+		ShowErrorMessage(GetLastError(), "querying process heap for text saving");
+		return;
+	}
 
 	szFilename[0] = '\0';
 
@@ -487,42 +500,63 @@ static void s_OnCmdSaveText(HWND hWnd, RtdDispWndData_t* pData) {
 	ofnSaveText.Flags = OFN_OVERWRITEPROMPT;
 	if (!s_ShowSaveDialog(&ofnSaveText)) return;
 
-	hFile = CreateFileA(ofnSaveText.lpstrFile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	// NOT biSizeImage
+	pDataUnflipped = HeapAlloc(hHeap, 0, pData->m_infBitmap.m_bmih.biWidth * pData->m_infBitmap.m_bmih.biHeight);
+	if (!pDataUnflipped) {
+		ShowErrorMessage(GetLastError(), "allocating memory for unflipped image");
+		return;
+	}
+
+	// Flip the image
+	// This could be optimized - don't use memcpy though
+	for (nLine = pData->m_infBitmap.m_bmih.biHeight - 1, pCurPixelUnflipped = pDataUnflipped; nLine >= 0; nLine--) {
+		for (nPixel = 0; nPixel < pData->m_infBitmap.m_bmih.biWidth; nPixel++, pCurPixelUnflipped++)
+			*pCurPixelUnflipped = pData->m_pPixelData[nLine * pData->m_nBitmapStride + nPixel];
+	}
+
+	// Create file
+	hFile = CreateFileA(ofnSaveText.lpstrFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
 		ShowErrorMessage(GetLastError(), "creating hex dump file");
-		return;
+		goto L_freedata;
 	}
 
+	// Write header
 	if (!WriteFile(hFile, s_cszHexDumpHeader, sizeof(s_cszHexDumpHeader) - 1, &nWritten, NULL)) {
-		CloseHandle(hFile);
 		ShowErrorMessage(GetLastError(), "writing hex dump header");
-		return;
+		goto L_closefile;
 	}
 
-	for (nBaseLocation = 0; nBaseLocation < pData->m_infBitmap.m_bmih.biSizeImage; nBaseLocation += 16) {
+	// Write hex dump lines
+	for (nBaseLocation = 0, nLine = pData->m_infBitmap.m_bmih.biHeight - 1; nBaseLocation < pData->m_infBitmap.m_bmih.biSizeImage; nBaseLocation += 16) {
 		arrInserts[0] = nBaseLocation;
 
+		// Copy data bytes into the inserts array
 		for (nOffset = 0, nPixel = nBaseLocation; nOffset < 16; nOffset++, nPixel++)
-			arrInserts[nOffset + 1] = (nPixel < pData->m_infBitmap.m_bmih.biSizeImage) ? (UINT_PTR)pData->m_pPixelData[nPixel] : 0;
+			arrInserts[nOffset + 1] = (nPixel < pData->m_infBitmap.m_bmih.biSizeImage) ? (UINT_PTR)pDataUnflipped[nPixel] : 0;
 
+		// Format the line
 		if (!FormatMessageA(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY,
 			"%1!08X!:  %2!02X! %3!02X! %4!02X! %5!02X! %6!02X! %7!02X! %8!02X! %9!02X!  %10!02X! %11!02X! %12!02X! %13!02X! %14!02X! %15!02X! %16!02X! %17!02X!\r\n",
 			0, 0, szLine, sizeof(szLine), (va_list*)arrInserts))
 		{
-			CloseHandle(hFile);
 			ShowErrorMessage(GetLastError(), "formatting hex dump line");
-			return;
+			goto L_closefile;
 		}
 
+		// Write it
 		if (!WriteFile(hFile, szLine, 61, &nWritten, NULL)) {
-			CloseHandle(hFile);
 			ShowErrorMessage(GetLastError(), "writing hex dump line");
-			return;
+			goto L_closefile;
 		}
 	}
 
-	CloseHandle(hFile);
 	MessageBoxA(hWnd, "Data stream saved as hexadecimal values.", "Saved", MB_ICONINFORMATION);
+
+L_closefile:
+	CloseHandle(hFile);
+L_freedata:
+	HeapFree(hHeap, 0, pDataUnflipped);
 }
 
 static BOOL s_ShowSaveDialog(LPOPENFILENAMEA pofn) {
